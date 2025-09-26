@@ -1,41 +1,49 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-xlim, ylim= (-2,2), (-2,2)
-max_iter = 50
-tol = 1e-6
-resolution = 500
+xlim, ylim = (-5, 5), (-5, 5)
+max_iter = 1000
+accuracy = 1e-6
+resolution = 1000
+
+
 def newton_fractal(f, f_prime, roots):
-    realnum = np.linspace(xlim[0], xlim[1], resolution)
-    imaginarynum = np.linspace(ylim[0], ylim[1], resolution)
-    z = realnum[:, None] + 1j * imaginarynum
+    real_vals = np.linspace(xlim[0], xlim[1], resolution)
+    imag_vals = np.linspace(ylim[0], ylim[1], resolution)
+    z = real_vals[:, None] + 1j * imag_vals
 
-    iterations = np.zeros(z.shape)
-    root_map = np.zeros(z.shape)
+    root_map = np.zeros(z.shape, dtype=int)
 
-    for i in range(max_iter): # using the newton-raphson method here, hence the name newton's fractal
-        Z_prev = z
-        z = z - f(z) / f_prime(z)
+    not_converged = np.ones(z.shape, dtype=bool)
 
-        for idx, root in enumerate(roots):
-            converged = np.abs(z - root) < tol
-            root_map[converged] = idx + 1
-            iterations[converged] = i
-        if np.allclose(z, Z_prev, atol=tol):
+    roots = np.array(roots)[:, None, None]
+
+    for i in range(max_iter):
+        z_active = z[not_converged]
+        z[not_converged] = z_active - f(z_active) / f_prime(z_active)
+
+        distances = np.abs(z - roots)
+
+        closest_root_idx = np.argmin(distances, axis=0)
+
+        min_distances = np.min(distances, axis=0)
+
+        newly_converged = (min_distances < accuracy) & not_converged
+
+        root_map[newly_converged] = closest_root_idx[newly_converged] + 1
+
+        not_converged[newly_converged] = False
+
+        if not np.any(not_converged):
+            print(f"All points converged after {i + 1} iterations.")
             break
 
     plt.imshow(root_map, extent=(*xlim, *ylim), cmap="viridis", origin="lower")
-    plt.colorbar(label="Root Convergence")
-    plt.title("newton's fractal")
-    plt.xlabel("real")
-    plt.ylabel("imaginary")
+    plt.colorbar(label="Root Convergence (1, 2, 3)")
     plt.show()
 
-f = lambda z: z**3 - 1 # try with z^4 if you wanna see a weirder pattern
-f_prime = lambda z: 3 * z**2
+f = lambda z: z ** 3 - 1
+f_prime = lambda z: 3 * z ** 2
 roots = [np.exp(2j * np.pi * k / 3) for k in range(3)]
 
 newton_fractal(f, f_prime, roots)
-
-""" disclaimer: i am a learner, so i used a lil chat gpt to guide me. 
-feel free to bash me if i made any mistakes"""
